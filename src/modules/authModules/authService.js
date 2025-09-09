@@ -1,9 +1,12 @@
-import { userModel } from '../../DB/models/userModel.js'
-import { create, findByEmail, findById, findOne } from '../../DB/serviceDB.js'
+import { providers, userModel } from '../../DB/models/userModel.js'
+import { create, findByEmail, findOne } from '../../DB/serviceDB.js'
 import { decodeToken, tokenTypes } from '../../middelware/authMidellware.js'
 import {
+  alreadyHasAPasswordLogin,
   invalidCredentials,
+  invalidLoginMethod,
   invalidOtp,
+  notConfirmed,
   notFoundUser,
   notValidEmail,
   otpExpired,
@@ -19,7 +22,10 @@ import { customAlphabet } from 'nanoid'
 import { sendEmail } from '../../utils/sendEmail/sendEmail.js'
 import { compare } from 'bcryptjs'
 
-export const signUp = async (req, res, next) => {
+import { OAuth2Client } from 'google-auth-library'
+
+const client = new OAuth2Client()
+export const signUp = async (req, res) => {
   const { F_name, L_name, email, age, password, gender, role, phone } = req.body
   const emailIsExist = await findOne({
     model: userModel,
@@ -29,8 +35,8 @@ export const signUp = async (req, res, next) => {
     throw new notValidEmail()
   }
   const subject = 'email confirmation'
-  const custom = customAlphabet('0123456789', 8)
-  const otp = custom()
+  const custom = customAlphabet('0123456789')
+  const otp = custom(6)
   const html = template(otp, F_name, subject)
   const user = await create({
     model: userModel,
@@ -45,7 +51,7 @@ export const signUp = async (req, res, next) => {
       phone: encryption(phone),
       emailOtp: {
         otp: hash(otp),
-        expiredAt: Date.now() + 1000 * 100,
+        expiredAt: Date.now() + 1000 * 120,
       },
     },
   })
@@ -54,21 +60,40 @@ export const signUp = async (req, res, next) => {
   return successHandler({ res, data: user, status: 201 })
 }
 
-export const confirmEmail = async (req, res, next) => {
+export const confirmEmail = async (req, res) => {
   const { otp, email } = req.body
   const user = await findByEmail(email)
   if (!user) {
     throw new notFoundUser('email')
   }
+  if (user.otpBan && user.otpBan > Date.now()) {
+    const remainingTime = Math.ceil((user.otpBan - Date.now()) / 1000) // هنا بيقولي ان ليا وقت محدود من اول ما ابعتلك الotp  و هو 5 دقايق
+    throw new Error(
+      `you're banned because you You have exceeded the maximum number of attempts ${remainingTime}`
+    )
+  }
   if (!user.emailOtp.otp) {
-    throw new Error("otp isn't exist", { cause: 409 })
+    throw new Error("otp isn't exist", { cause: 409 }) // Otpهنا بيشيك ع موجود ولا لا
   }
   if (user.emailOtp.expiredAt <= Date.now()) {
+    // بنتاكد من صلاحيه الotpهل هو اكسبير انتهي ؟؟
     throw new otpExpired()
   }
   if (!compare(otp, user.emailOtp.otp)) {
-    throw new invalidOtp()
+    // بيقارن الاتنين ببعض و هل الاتنين واحد ولا في اختلاف
+    
+     user.fieldAttempts += 1
+     if (user.fieldAttempts >= 5) {
+       // هنا كانت محاولاتي انتهت  و هستني ال5 دقايق بتوع البان و هرجه محاولاتي صفر تاني
+       user.otpBan = new Date(Date.now() + 1000 * 300)
+       user.fieldAttempts = 0
+       
+    }
+      await user.save()
+  throw new invalidOtp()
   }
+
+ 
   await user.updateOne({
     confirmed: true,
     $unset: {
@@ -78,7 +103,7 @@ export const confirmEmail = async (req, res, next) => {
   return successHandler({ res })
 }
 
-export const resendOtp = async (req, res, next) => {
+export const resendOtp = async (req, res) => {
   const { email } = req.body
   const user = await findByEmail(email)
   if (!user) {
@@ -93,26 +118,33 @@ export const resendOtp = async (req, res, next) => {
   }
   const subject = 'email confirmation(resend otp)'
   const custom = customAlphabet('0123456789')
-  const otp = custom(8)
+  const otp = custom(5)
   const html = template(otp, user.F_name, subject)
   await sendEmail({ to: user.email, html, subject })
   await user.updateOne({
     emailOtp: {
       otp: hash(otp),
-      expiredAt: Date.now() + 1000 * 100,
+      expiredAt: Date.now() + 1000 * 120,
     },
   })
 
   return successHandler({ res })
 }
 
-export const login = async (req, res, next) => {
+export const login = async (req, res) => {
   const { email, password } = req.body
+
   const user = await findOne({
     model: userModel,
     filter: { email },
   })
-  if (!user || !user.CHECK_PASSWORD(password)) {
+  if (!user?.confirmed) {
+    throw new notConfirmed()
+  }
+  if (user.provider == providers.google) {
+    throw new invalidLoginMethod()
+  }
+  if (!user || !(await user.CHECK_PASSWORD(password))) {
     throw new invalidCredentials()
   }
   const accessToken = jwt.sign(
@@ -166,12 +198,12 @@ export const refreshToken = async (req, res, next) => {
   })
 }
 
-export const getUserProfile = async (req, res, next) => {
+export const getUserProfile = async (req, res) => {
   const user = req.user
   return successHandler({ res, data: user, status: 200 })
 }
 
-export const forgetPassword = async (req, res, next) => {
+export const forgetPassword = async (req, res) => {
   const { email } = req.body
   const user = await findByEmail(email)
   if (!user) {
@@ -194,26 +226,121 @@ export const forgetPassword = async (req, res, next) => {
 
   return successHandler({ res })
 }
-export const changePass = async (req, res, next) => {
+export const changePass = async (req, res) => {
   const { email, otp, password } = req.body
   const user = await findByEmail(email)
   if (!user) {
     throw new notFoundUser('email')
   }
   if (!user.passwordOtp.otp) {
-    throw new Error('no otp exist', {cause: 400,})
+    throw new Error('no otp exist', { cause: 400 })
   }
   if (user.passwordOtp.expiredAt <= Date.now()) {
-  throw new otpExpired()
+    throw new otpExpired()
   }
-  if (!compare(otp,user.passwordOtp.otp)) {
+  if (!(await compare(otp, user.passwordOtp.otp))) {
     throw new invalidOtp()
-    
   }
   await user.updateOne({
-    password,
+    password: hash(password),
     $unset: {
-      passwordOtp:""
-    }
+      passwordOtp: '',
+    },
+    changedCredentialsAt: Date.now(),
   })
+  return successHandler({ res })
+}
+
+export const socialLogin = async (req, res) => {
+  const idToken = req.body.idToken
+  const ticket = await client.verifyIdToken({
+    idToken,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  })
+  const {
+    given_name: F_name,
+    family_name: L_name,
+    email,
+    email_verified,
+  } = ticket.getPayload()
+  let user = await findByEmail(email)
+  if (!email_verified) {
+    throw new Error('Email is not verified by Google')
+  }
+
+  if (user?.provider == providers.system) {
+    throw new invalidLoginMethod()
+  }
+  if (!user) {
+    user = await userModel.create({
+      email,
+      F_name,
+      confirmed: email_verified,
+      L_name,
+      provider: providers.google,
+    })
+  }
+
+  if (!user.confirmed) {
+    throw new notConfirmed()
+  }
+  const accessToken = jwt.sign(
+    {
+      _id: user._id,
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+      expiresIn: '1h',
+    }
+  )
+  const refreshToken = jwt.sign(
+    {
+      _id: user._id,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: '7d',
+    }
+  )
+
+  return successHandler({
+    res,
+    data: { accessToken, refreshToken },
+  })
+}
+
+export const SignUpWithPassword = async (req, res) => {
+  const { email, password } = req.body
+  const user = await findByEmail(email)
+  if (!user) {
+    throw new notFoundUser()
+  }
+  if (user.provider == providers.system) {
+    throw new alreadyHasAPasswordLogin()
+  }
+  if (user.provider == providers.google) {
+    if (user.password) {
+      throw new Error('password already set ')
+    }
+    const hashedPass = hash(password)
+    user.password = hashedPass
+    user.provider = providers.system
+    await user.save()
+  }
+  return successHandler({ res })
+}
+
+export const signUpWithGoogle = async (req, res) => {
+  const { email } = req.body
+  const user = await findByEmail(email)
+  if (!user) {
+    throw new notFoundUser()
+  }
+
+  if (user.provider == providers.system) {
+    throw new alreadyHasAPasswordLogin()
+  }
+  user.provider = providers.google
+  await user.save()
+  return successHandler({ res })
 }

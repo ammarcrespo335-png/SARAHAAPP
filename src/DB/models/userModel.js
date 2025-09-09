@@ -11,6 +11,10 @@ export const Roles = {
   user: 'user',
   admin: 'admin',
 }
+export const providers = {
+  system: "system",
+  google:"google"
+}
 Object.freeze(Roles)
 export const userSchema = new Schema(
   {
@@ -29,7 +33,13 @@ export const userSchema = new Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        if (this.provider==providers.google) {
+          return false
+        } else if (this.provider==providers.system) {
+          return true
+        }
+      },
     },
     age: {
       type: Number,
@@ -50,7 +60,13 @@ export const userSchema = new Schema(
     },
     phone: {
       type: String,
-      required: true,
+      require: function () {
+        if (this.provider==providers.google) {
+          return false
+        } else if (this.provider==providers.system) {
+          return true
+        }
+      },
       set(value) {
         return encryption(value)
       },
@@ -70,6 +86,21 @@ export const userSchema = new Schema(
       otp: String,
       expiredAt: Date,
     },
+    changedCredentialsAt: Date,
+    provider: {
+      type: String,
+      enum: [providers.system, providers.google],
+      default: providers.system,
+    },
+    fieldAttempts: {
+      type: Number,
+      default:0
+    },
+    otpBan: {
+      type: Date,
+      default:null
+      
+    }
   },
   {
     timestamps: true,

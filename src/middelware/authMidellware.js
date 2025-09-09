@@ -1,14 +1,25 @@
 import jwt from 'jsonwebtoken'
-import { invalidCredentials, invalidToken, notFound } from '../utils/exceptions.js'
+import {
+  invalidCredentials,
+  invalidToken,
+  loginAgain,
+  notConfirmed,
+  notFound,
+} from '../utils/exceptions.js'
 import { findById } from '../DB/serviceDB.js'
 import { userModel } from '../DB/models/userModel.js'
+
 
 export const tokenTypes = {
   access: 'access',
   refresh: 'refresh',
 }
 Object.freeze(tokenTypes)
-export const decodeToken = async ({ authorization, type = tokenTypes.access, next }) => {
+export const decodeToken = async ({
+  authorization,
+  type = tokenTypes.access,
+  next,
+}) => {
   if (!authorization) {
     return next(new invalidToken())
   }
@@ -29,6 +40,12 @@ export const decodeToken = async ({ authorization, type = tokenTypes.access, nex
   })
   if (!user) {
     return next(new notFound('user'))
+  }
+  if (!user.confirmed) {
+    return next(new notConfirmed())
+  }
+  if (user.changedCredentialsAt?.getTime() >= data.iat * 1000) {
+    return next(new loginAgain())
   }
   return user
 }

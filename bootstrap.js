@@ -3,11 +3,12 @@ import authRouter from './src/modules/authModules/authController.js'
 import messageRouter from './src/modules/messageModules/messageController.js'
 import UserRouter from './src/modules/userModules/userController.js'
 import { notFound } from './src/utils/exceptions.js'
-import { sendEmail } from './src/utils/sendEmail/sendEmail.js'
+import cors from 'cors'
 
 export const bootstrap = async (app, express) => {
   const port = process.env.port
   app.use(express.json())
+  app.use(cors())
   await connectionDB()
  
   app.use('/auth', authRouter)

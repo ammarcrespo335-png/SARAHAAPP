@@ -6,7 +6,7 @@ export const sendEmail = async({ to, subject, html }) => {
     port: process.env.transporter_Port,
     secure: true,
     service: 'gmail',
-    auth: {
+    auth: { 
       user: process.env.auth_User,
       pass: process.env.auth_Pass,
     },

@@ -39,3 +39,23 @@ export class otpExpired extends Error {
     super(' otp expired', { cause: 404 })
   }
 }
+export class notConfirmed extends Error {
+  constructor() {
+    super(' please confirm your email', { cause: 404 })
+  }
+}
+export class loginAgain extends Error {
+  constructor() {
+    super(' please login again', { cause: 404 })
+  }
+}
+export class invalidLoginMethod extends Error {
+  constructor() {
+    super('invalid Login Method ', { cause: 404 })
+  }
+}
+export class alreadyHasAPasswordLogin extends Error {
+  constructor() {
+    super('already has a password login', { cause: 404 })
+  }
+}

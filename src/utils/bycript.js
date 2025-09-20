@@ -1,9 +1,11 @@
 import { compareSync, hashSync } from 'bcryptjs'
 
 export const hash = text => {
-  return hashSync(text, Number(process.env.BCRYPT_SALT_HASH))
+  const saltRounds = Number(process.env.BCRYPT_SALT_HASH) || 10 
+  return hashSync(text, saltRounds)
 }
 
-export const compare_hash = (text, hashedText) => {
-  return compareSync(text, hashedText)
+
+export const compare_hash = async(text, hashedText) => {
+  return   compareSync(text, hashedText)
 }

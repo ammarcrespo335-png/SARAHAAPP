@@ -18,5 +18,10 @@ authRouter.post('/change-password', errorHandler(authService.changePass))
 authRouter.post('/social-login', errorHandler(authService.socialLogin))
 authRouter.post('/set-password', errorHandler(authService.SignUpWithPassword))
 authRouter.post('/link-google', errorHandler(authService.signUpWithGoogle))
-
+authRouter.patch('/update-email',auth(),errorHandler(authService.updateEmail))
+authRouter.patch(
+  '/confirmNewEmail',
+  auth(),
+  errorHandler(authService.confirmNewEmail)
+)
 export default authRouter

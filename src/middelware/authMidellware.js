@@ -5,10 +5,10 @@ import {
   loginAgain,
   notConfirmed,
   notFound,
+  unAuthorized,
 } from '../utils/exceptions.js'
-import { findById } from '../DB/serviceDB.js'
+import { findById, findOne } from '../DB/serviceDB.js'
 import { userModel } from '../DB/models/userModel.js'
-
 
 export const tokenTypes = {
   access: 'access',
@@ -34,9 +34,12 @@ export const decodeToken = async ({
     ACCESS = process.env.REFRESH_TOKEN_SECRET
   }
   const data = jwt.verify(token, ACCESS)
-  const user = await findById({
+  const user = await findOne({
     model: userModel,
-    id: data._id,
+    filter: {
+      _id: data._id,
+      isDeleted: false,
+    },
   })
   if (!user) {
     return next(new notFound('user'))
@@ -54,6 +57,15 @@ export const auth = () => {
     const authorization = req.headers.authorization
     const user = await decodeToken({ authorization, next })
     req.user = user
+    next()
+  }
+}
+export const allowTo = (...Roles) => {
+  return async (req, res, next) => {
+    const user = req.user
+    if (Roles.includes(user.role)) {
+      throw new unAuthorized()
+    }
     next()
   }
 }

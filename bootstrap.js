@@ -5,15 +5,19 @@ import UserRouter from './src/modules/userModules/userController.js'
 import { notFound } from './src/utils/exceptions.js'
 import cors from 'cors'
 
+
 export const bootstrap = async (app, express) => {
   const port = process.env.port
   app.use(express.json())
   app.use(cors())
   await connectionDB()
- 
+
   app.use('/auth', authRouter)
   app.use('/users', UserRouter)
   app.use('/messages', messageRouter)
+  app.use('/uploads', express.static('./uploads'))
+
+
 
   app.all('{/*paths}', (req, res, next) => {
     return next(new notFound())

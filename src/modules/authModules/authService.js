@@ -19,10 +19,11 @@ import { encryption } from '../../utils/CRYPTO.js'
 import { hash } from '../../utils/bycript.js'
 import { template } from '../../utils/sendEmail/generateHtml.js'
 import { customAlphabet } from 'nanoid'
-import { sendEmail } from '../../utils/sendEmail/sendEmail.js'
+import { createOtp, sendEmail } from '../../utils/sendEmail/sendEmail.js'
 import { compare } from 'bcryptjs'
 
 import { OAuth2Client } from 'google-auth-library'
+import { StatusCodes } from 'http-status-codes'
 
 const client = new OAuth2Client()
 export const signUp = async (req, res) => {
@@ -35,9 +36,13 @@ export const signUp = async (req, res) => {
     throw new notValidEmail()
   }
   const subject = 'email confirmation'
-  const custom = customAlphabet('0123456789')
-  const otp = custom(6)
+  const otp = createOtp()
   const html = template(otp, F_name, subject)
+  const emailSent = await sendEmail({ to: email, html, subject })
+  console.log('sendEmail result:', emailSent)
+  if (!emailSent) {
+    throw new Error(' you have error to confirmation email!!')
+  }
   const user = await create({
     model: userModel,
     data: {
@@ -56,7 +61,6 @@ export const signUp = async (req, res) => {
     },
   })
 
-  await sendEmail({ to: user.email, html, subject })
   return successHandler({ res, data: user, status: 201 })
 }
 
@@ -69,31 +73,27 @@ export const confirmEmail = async (req, res) => {
   if (user.otpBan && user.otpBan > Date.now()) {
     const remainingTime = Math.ceil((user.otpBan - Date.now()) / 1000) // هنا بيقولي ان ليا وقت محدود من اول ما ابعتلك الotp  و هو 5 دقايق
     throw new Error(
-      `you're banned because you You have exceeded the maximum number of attempts ${remainingTime}`
+      `you're banned because you have exceeded the maximum number of attempts ${remainingTime}`
     )
   }
-  if (!user.emailOtp.otp) {
+  if (!user.emailOtp || !user.emailOtp.otp) {
     throw new Error("otp isn't exist", { cause: 409 }) // Otpهنا بيشيك ع موجود ولا لا
   }
   if (user.emailOtp.expiredAt <= Date.now()) {
     // بنتاكد من صلاحيه الotpهل هو اكسبير انتهي ؟؟
     throw new otpExpired()
   }
-  if (!compare(otp, user.emailOtp.otp)) {
-    // بيقارن الاتنين ببعض و هل الاتنين واحد ولا في اختلاف
-    
-     user.fieldAttempts += 1
-     if (user.fieldAttempts >= 5) {
-       // هنا كانت محاولاتي انتهت  و هستني ال5 دقايق بتوع البان و هرجه محاولاتي صفر تاني
-       user.otpBan = new Date(Date.now() + 1000 * 300)
-       user.fieldAttempts = 0
-       
+  if (!(await compare(otp, user.emailOtp.otp))) {
+    user.fieldAttempts += 1
+    if (user.fieldAttempts >= 5) {
+      // هنا كانت محاولاتي انتهت  و هستني ال5 دقايق بتوع البان و هرجع محاولاتي صفر تاني
+      user.otpBan = new Date(Date.now() + 1000 * 300)
+      user.fieldAttempts = 0
     }
-      await user.save()
-  throw new invalidOtp()
+    await user.save()
+    throw new invalidOtp()
   }
 
- 
   await user.updateOne({
     confirmed: true,
     $unset: {
@@ -102,35 +102,6 @@ export const confirmEmail = async (req, res) => {
   })
   return successHandler({ res })
 }
-
-export const resendOtp = async (req, res) => {
-  const { email } = req.body
-  const user = await findByEmail(email)
-  if (!user) {
-    throw new notFoundUser('email')
-  }
-
-  if (user.confirmed) {
-    throw new Error('already confirmed', { cause: 400 })
-  }
-  if (user.emailOtp.expiredAt > Date.now()) {
-    throw new Error('use last sended otp', { cause: 400 })
-  }
-  const subject = 'email confirmation(resend otp)'
-  const custom = customAlphabet('0123456789')
-  const otp = custom(5)
-  const html = template(otp, user.F_name, subject)
-  await sendEmail({ to: user.email, html, subject })
-  await user.updateOne({
-    emailOtp: {
-      otp: hash(otp),
-      expiredAt: Date.now() + 1000 * 120,
-    },
-  })
-
-  return successHandler({ res })
-}
-
 export const login = async (req, res) => {
   const { email, password } = req.body
 
@@ -138,15 +109,16 @@ export const login = async (req, res) => {
     model: userModel,
     filter: { email },
   })
+  if (!user || !(await user.CHECK_PASSWORD(password))) {
+    throw new invalidCredentials()
+  }
   if (!user?.confirmed) {
     throw new notConfirmed()
   }
   if (user.provider == providers.google) {
     throw new invalidLoginMethod()
   }
-  if (!user || !(await user.CHECK_PASSWORD(password))) {
-    throw new invalidCredentials()
-  }
+
   const accessToken = jwt.sign(
     {
       _id: user._id,
@@ -172,6 +144,34 @@ export const login = async (req, res) => {
     status: 201,
   })
 }
+export const resendOtp = async (req, res) => {
+  const { email } = req.body
+  const user = await findByEmail(email)
+  if (!user) {
+    throw new notFoundUser('email')
+  }
+
+  if (user.confirmed) {
+    throw new Error('already confirmed', { cause: 400 })
+  }
+  if (user.emailOtp.expiredAt > Date.now()) {
+    throw new Error('use last sended otp', { cause: 400 })
+  }
+  const subject = 'email confirmation(resend otp)'
+  const custom = customAlphabet('0123456789')
+  const otp = custom(6)
+  const html = template(otp, user.F_name, subject)
+  await sendEmail({ to: user.email, html, subject })
+  await user.updateOne({
+    emailOtp: {
+      otp: hash(otp),
+      expiredAt: Date.now() + 1000 * 120,
+    },
+  })
+
+  return successHandler({ res })
+}
+
 export const refreshToken = async (req, res, next) => {
   const { refreshToken } = req.body
   const user = await decodeToken({
@@ -311,12 +311,17 @@ export const socialLogin = async (req, res) => {
 
 export const SignUpWithPassword = async (req, res) => {
   const { email, password } = req.body
-  const user = await findByEmail(email)
+  const user = await userModel.findOne({ email, isDeleted: false })
   if (!user) {
     throw new notFoundUser()
   }
   if (user.provider == providers.system) {
-    throw new alreadyHasAPasswordLogin()
+    return successHandler({
+      res,
+      status: 200,
+      msg: 'This account already has a password set',
+      data: user,
+    })
   }
   if (user.provider == providers.google) {
     if (user.password) {
@@ -327,20 +332,95 @@ export const SignUpWithPassword = async (req, res) => {
     user.provider = providers.system
     await user.save()
   }
+  return successHandler({ res, status: 200, data: user })
+}
+export const signUpWithGoogle = async (req, res) => {
+  const { email, F_name, L_name } = req.body
+  let user = await userModel.findOne({ email, isDeleted: false })
+  if (!user) {
+    user = await userModel.create({
+      email,
+      F_name,
+      L_name,
+      provider: providers.google,
+      confirmed: true,
+    })
+  } else if (user.provider == providers.system) {
+    throw new alreadyHasAPasswordLogin()
+  }
+
+  await user.save()
+  return successHandler({ res, data: user })
+}
+
+export const updateEmail = async (req, res) => {
+  const user = req.user
+  const { email } = req.body
+  if (user.email == email) {
+    throw new Error('update your email with new email', {
+      cause: StatusCodes.BAD_REQUEST,
+    })
+  }
+  const isExist = await userModel.findOne({
+    email,
+    isDeleted: false,
+  })
+
+  if (isExist) {
+    throw new notValidEmail()
+  }
+
+  const oldEmailOtp = createOtp()
+  const oldEmailHtml = template(
+    oldEmailOtp,
+    user.F_name,
+    'confirm update email'
+  )
+  await sendEmail({
+    to: user.email,
+    subject: 'confirm update email',
+    html: oldEmailHtml,
+  })
+  user.oldEmailOtp = {
+    otp: hash(oldEmailOtp),
+    expiredAt: Date.now() + 1000 * 300,
+  }
+  const newEmailOtp = createOtp()
+  const newEmailHtml = template(newEmailOtp, user.F_name, 'confirm new email')
+  await sendEmail({
+    to: email,
+    subject: 'confirm new email',
+    html: newEmailHtml,
+  })
+  user.newEmailOtp = {
+    otp: hash(newEmailOtp),
+    expiredAt: Date.now() + 1000 * 300,
+  }
+  user.newEmail = email
+  await user.save()
+
   return successHandler({ res })
 }
 
-export const signUpWithGoogle = async (req, res) => {
-  const { email } = req.body
-  const user = await findByEmail(email)
-  if (!user) {
-    throw new notFoundUser()
+export const confirmNewEmail = async (req, res) => {
+  const user = req.user
+  const { oldEmailOtp, newEmailOtp } = req.body
+  if (
+    user.oldEmailOtp.expiredAt <= Date.now() ||
+    user.newEmailOtp.expiredAt <= Date.now()
+  ) {
+    throw new otpExpired()
+  }
+  if (
+    !(await compare(oldEmailOtp, user.oldEmailOtp.otp)) ||
+    !(await compare(newEmailOtp, user.newEmailOtp.otp))
+  ) {
+    throw new invalidOtp()
   }
 
-  if (user.provider == providers.system) {
-    throw new alreadyHasAPasswordLogin()
-  }
-  user.provider = providers.google
-  await user.save()
+  user.email = undefined
+  user.newEmail = undefined
+  user.oldEmailOtp = undefined
+  user.newEmailOtp = undefined
   return successHandler({ res })
 }

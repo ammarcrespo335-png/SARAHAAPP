@@ -1,4 +1,4 @@
-import { StatusCodes } from "http-status-codes"
+
 
 
 export const Validation = (schema) => {
@@ -6,7 +6,8 @@ export const Validation = (schema) => {
         const data = {
           ...req.body,
           ...req.params,
-          ...req.query,
+            ...req.query,
+          ...req.file
         }
         const result = schema.validate(data,{ abortEarly: false })
         if (result.error) {

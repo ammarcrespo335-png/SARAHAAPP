@@ -1,3 +1,5 @@
+import { StatusCodes } from "http-status-codes"
+
 export class notFound extends Error {
   constructor(name = 'url ') {
     super('not found ' + name, { cause: 404 })
@@ -6,13 +8,13 @@ export class notFound extends Error {
 
 export class notValidEmail extends Error {
   constructor() {
-    super('email already exists', { cause: 404 })
+    super('in-valid email', { cause: 404 })
   }
 }
 
 export class invalidCredentials extends Error {
   constructor() {
-    super('invalid Credentials', { cause: 404 })
+    super('in-valid Credentials', { cause: 404 })
   }
 }
 
@@ -25,7 +27,7 @@ export class invalidToken extends Error {
 
 export class notFoundUser extends Error {
   constructor() {
-    super(' notFoundUser', { cause: 404 })
+    super(' not Found User', { cause: 404 })
   }
 }
 
@@ -57,5 +59,10 @@ export class invalidLoginMethod extends Error {
 export class alreadyHasAPasswordLogin extends Error {
   constructor() {
     super('already has a password login', { cause: 404 })
+  }
+}
+export class unAuthorized extends Error {
+  constructor() {
+    super('unAuthorized', { cause: StatusCodes.UNAUTHORIZED })
   }
 }

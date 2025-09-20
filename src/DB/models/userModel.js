@@ -1,6 +1,10 @@
-import { get, model, Schema, set } from 'mongoose'
+import { get, model, Schema, set, Types } from 'mongoose'
 import { decryption, encryption } from '../../utils/CRYPTO.js'
 import { compare_hash } from '../../utils/bycript.js'
+
+
+
+
 
 export const Gender = {
   male: 'male',
@@ -12,9 +16,18 @@ export const Roles = {
   admin: 'admin',
 }
 export const providers = {
-  system: "system",
-  google:"google"
+  system: 'system',
+  google: 'google',
 }
+const otpSchema = new Schema(
+  {
+    otp: String,
+    expiredAt: Date,
+  },
+  {
+    _id: false,
+  }
+)
 Object.freeze(Roles)
 export const userSchema = new Schema(
   {
@@ -34,9 +47,9 @@ export const userSchema = new Schema(
     password: {
       type: String,
       required: function () {
-        if (this.provider==providers.google) {
+        if (this.provider == providers.google) {
           return false
-        } else if (this.provider==providers.system) {
+        } else if (this.provider == providers.system) {
           return true
         }
       },
@@ -61,9 +74,9 @@ export const userSchema = new Schema(
     phone: {
       type: String,
       require: function () {
-        if (this.provider==providers.google) {
+        if (this.provider == providers.google) {
           return false
-        } else if (this.provider==providers.system) {
+        } else if (this.provider == providers.system) {
           return true
         }
       },
@@ -78,29 +91,35 @@ export const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    emailOtp: {
-      otp: String,
-      expiredAt: Date,
-    },
-    passwordOtp: {
-      otp: String,
-      expiredAt: Date,
-    },
+    emailOtp: otpSchema,
+    oldEmailOtp: otpSchema,
+    newEmailOtp: otpSchema,
+    passwordOtp: otpSchema,
+    newEmail:String,
     changedCredentialsAt: Date,
     provider: {
       type: String,
       enum: [providers.system, providers.google],
       default: providers.system,
+    }, isDeleted: {
+      type: Boolean,
+      default: false,
+      
+      
+    }, DeletedBy: {
+      type: Types.ObjectId,
+      ref:"user"
+      
     },
+    profileImage:String,
     fieldAttempts: {
       type: Number,
-      default:0
+      default: 0,
     },
     otpBan: {
       type: Date,
-      default:null
-      
-    }
+      default: null,
+    },
   },
   {
     timestamps: true,

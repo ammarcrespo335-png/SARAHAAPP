@@ -1,6 +1,9 @@
 import { providers, userModel } from '../../DB/models/userModel.js'
 import { create, findByEmail, findOne } from '../../DB/serviceDB.js'
-import { decodeToken, tokenTypes } from '../../middelware/authMidellware.js'
+// import {
+//   decodeToken,
+//   tokenTypes,
+// } from '../../middleware folder/validationMiddleware.js'
 import {
   alreadyHasAPasswordLogin,
   invalidCredentials,
@@ -24,6 +27,10 @@ import { compare } from 'bcryptjs'
 
 import { OAuth2Client } from 'google-auth-library'
 import { StatusCodes } from 'http-status-codes'
+import {
+  decodeToken,
+  tokenTypes,
+} from '../../middleware folder/authMiddleware.js'
 
 const client = new OAuth2Client()
 export const signUp = async (req, res) => {

@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import * as messageService from './messageService.js'
 import { errorHandler } from '../../utils/errorHandler.js'
-import { auth } from '../../middelware/authMidellware.js'
+import { auth } from '../../middleware folder/authMiddleware.js'
+
 
 const messageRouter = Router({
   mergeParams: true,

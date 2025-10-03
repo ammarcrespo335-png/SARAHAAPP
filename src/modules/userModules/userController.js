@@ -1,18 +1,19 @@
 import { Router } from 'express'
 import * as userService from './userService.js'
-import { Validation } from '../../middelware/ValidationMiddelware.js'
+import { Validation } from '../../middleware folder/validationMiddleware.js'
 import {
   getUserIdSchema,
   profileImageValidation,
   updateBasicInfo,
 } from './userValidation.js'
-import { allowTo, auth } from '../../middelware/authMidellware.js'
+
 import { errorHandler } from '../../utils/errorHandler.js'
 import { Roles } from '../../DB/models/userModel.js'
-import { uploadFile } from '../../utils/multer/multerCloud.js'
-import { storeFile } from '../../middelware/storeFileMiddelware.js'
+
 import { localUploadFile } from '../../utils/multer/multerLocal.js'
 import messageRouter from '../messageModules/messageController.js'
+import { allowTo, auth } from '../../middleware folder/authMiddleware.js'
+import { storeFile } from '../../middleware folder/storeFileMiddleware.js'
 
 const UserRouter = Router()
 UserRouter.use('/get-User-By-Id/:id/message', messageRouter)

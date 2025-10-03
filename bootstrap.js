@@ -6,12 +6,24 @@ import UserRouter from './src/modules/userModules/userController.js'
 import { notFound } from './src/utils/exceptions.js'
 import cors from 'cors'
 import morgan from 'morgan'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 
 export const bootstrap = async (app, express) => {
   const port = process.env.port
   app.use(express.json())
   app.use(cors())
-  app.use(morgan("dev"))
+  app.use(helmet())
+  app.use(
+    '/auth',
+    rateLimit({
+      windowMs: 1 * 60 * 1000,
+      max: 5,
+      message: 'Too many login attempts, please try again later.',
+    }),
+    authRouter
+  )
+  app.use(morgan('dev'))
   await connectionDB()
 
   app.use('/auth', authRouter)
@@ -19,9 +31,7 @@ export const bootstrap = async (app, express) => {
   app.use('/messages', messageRouter)
   app.use('/uploads', express.static('./uploads'))
 
-
-
-  app.all('{/*paths}', (req, res, next) => {
+  app.all(' *P ', (req, res, next) => {
     return next(new notFound())
   })
 

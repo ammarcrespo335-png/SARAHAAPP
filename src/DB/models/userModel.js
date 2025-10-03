@@ -1,10 +1,7 @@
 import { get, model, Schema, set, Types } from 'mongoose'
 import { decryption, encryption } from '../../utils/CRYPTO.js'
 import { compare_hash } from '../../utils/bycript.js'
-
-
-
-
+import { coverImages } from '../../modules/userModules/userService.js'
 
 export const Gender = {
   male: 'male',
@@ -95,23 +92,23 @@ export const userSchema = new Schema(
     oldEmailOtp: otpSchema,
     newEmailOtp: otpSchema,
     passwordOtp: otpSchema,
-    newEmail:String,
+    newEmail: String,
     changedCredentialsAt: Date,
     provider: {
       type: String,
       enum: [providers.system, providers.google],
       default: providers.system,
-    }, isDeleted: {
+    },
+    isDeleted: {
       type: Boolean,
       default: false,
-      
-      
-    }, DeletedBy: {
-      type: Types.ObjectId,
-      ref:"user"
-      
     },
-    profileImage:String,
+    DeletedBy: {
+      type: Types.ObjectId,
+      ref: 'user',
+    },
+    profileImage: { secure_url: String, public_id: String },
+    coverImages: [{ secure_url: String, public_id: String }],
     fieldAttempts: {
       type: Number,
       default: 0,

@@ -3,7 +3,6 @@ import { Gender, Roles } from '../DB/models/userModel.js'
 import mongoose from 'mongoose'
 import { fileTypes } from './multer/multerCloud.js'
 
-
 const checkId = (value, helpers) => {
   if (mongoose.isValidObjectId(value)) {
     return true
@@ -20,7 +19,10 @@ export const generalValidations = {
   confirmPassword: Joi.string().valid(Joi.ref('password')),
   gender: Joi.string().valid(Gender.male, Gender.female),
   role: Joi.string().valid(Roles.admin, Roles.user),
-  phone: Joi.string().min(10).max(13).regex(/^(\+20|0020|0?)(1)([0125])\d{8}$/),
+  phone: Joi.string()
+    .min(10)
+    .max(13)
+    .regex(/^(\+20|0020|0?)(1)([0125])\d{8}$/),
   otp: Joi.string().length(6),
   id: Joi.string().custom(checkId),
   fieldname: Joi.string().valid('profileImage'),

@@ -4,6 +4,13 @@ import { notFoundUser } from '../../utils/exceptions.js'
 import { successHandler } from '../../utils/successHandler.js'
 import fs from 'fs/promises'
 import cloudinary from '../../utils/multer/cloudConfig.js'
+import {
+  deleteByPrefix,
+  deleteFolder,
+  destroySingleFile,
+  multiFiles,
+  uploadSingleFile,
+} from '../../utils/multer/cloudServices.js'
 
 export const getProfile = async (req, res) => {
   const id = req.params.id
@@ -77,14 +84,52 @@ export const restoreAccount = async (req, res) => {
 }
 export const deleteUser = async (req, res) => {
   const user = req.user
+  if (user.profileImage || user.coverImages) {
+    await deleteByPrefix({ prefix: `users/${user._id}` })
+    await deleteFolder({ folder: `users/${user._id}` })
+  }
   await user.deleteOne()
   return successHandler({ res, msg: 'your account is deleted successfully ' })
 }
 export const profileImage = async (req, res) => {
-  console.log({ file: req.file })
-  const { secure_url } = await cloudinary.uploader.upload(req.file.path)
   const user = req.user
-  user.profileImage = secure_url
+  if (user.profileImage.public_id) {
+    await destroySingleFile({ public_id: user.profileImage.public_id })
+  }
+
+  const { secure_url, public_id } = await uploadSingleFile({
+    filePath: req.file.path,
+    dest: `users/${user._id}/profile_images`,
+  })
+
+  user.profileImage = {
+    secure_url,
+    public_id,
+  }
   await user.save()
+
   return successHandler({ res })
+}
+export const coverImages = async (req, res) => {
+  const user = req.user
+
+  const paths = []
+  req.files.map(file => {
+    paths.push(file.path)
+  })
+  const coverImages = await multiFiles({
+    paths,
+    dest: `users/${user._id}/cover_Images`,
+  })
+  user.coverImages.push(...coverImages)
+  await user.save()
+  return successHandler({ res, data: user })
+}
+export const getUserById = async (req, res) => {
+  const { id } = req.params
+  const user = await userModel.findById(id)
+  return successHandler({
+    res,
+    data: user,
+  })
 }

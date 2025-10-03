@@ -1,15 +1,17 @@
+import chalk from 'chalk'
 import { connectionDB } from './src/DB/connect.js'
 import authRouter from './src/modules/authModules/authController.js'
 import messageRouter from './src/modules/messageModules/messageController.js'
 import UserRouter from './src/modules/userModules/userController.js'
 import { notFound } from './src/utils/exceptions.js'
 import cors from 'cors'
-
+import morgan from 'morgan'
 
 export const bootstrap = async (app, express) => {
   const port = process.env.port
   app.use(express.json())
   app.use(cors())
+  app.use(morgan("dev"))
   await connectionDB()
 
   app.use('/auth', authRouter)
@@ -33,6 +35,6 @@ export const bootstrap = async (app, express) => {
   })
 
   app.listen(port, () => {
-    console.log('server is running on port', port)
+    console.log(chalk.blueBright('server is running on port', port))
   })
 }

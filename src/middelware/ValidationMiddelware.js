@@ -6,8 +6,8 @@ export const Validation = (schema) => {
         const data = {
           ...req.body,
           ...req.params,
-            ...req.query,
-          ...req.file
+          ...req.query,
+          ...req.file,
         }
         const result = schema.validate(data,{ abortEarly: false })
         if (result.error) {

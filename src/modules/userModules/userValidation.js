@@ -15,8 +15,9 @@ export const profileImageValidation = Joi.object({
   fieldname: generalValidations.fieldname.required(),
   encoding: generalValidations.encoding.required(),
   mimetype: generalValidations.mimetype.required(),
-  destination: generalValidations.destination.required(),
-  filename: generalValidations.filename.required(),
-  path: generalValidations.path.required(),
+  // destination: generalValidations.destination.required(),
+  // filename: generalValidations.filename.required(),
+  // path: generalValidations.path.required(),
   size: generalValidations.size.required(),
+  buffer: Joi.any().required(),
 })

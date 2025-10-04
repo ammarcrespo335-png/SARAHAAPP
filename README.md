@@ -4,12 +4,6 @@ An anonymous messaging platform with OTP-based email confirmation.
 Backend built with Node.js + Express + MongoDB and a minimal Angular frontend for demonstration.
 
 
-
-
-
-
-
-
 📑 Table of Contents
 
 Quick Overview
@@ -90,43 +84,121 @@ npm run dev
 # frontend
 cd frontend
 npm install
-ng serve
-
-📡 API Endpoints (Examples)
-🔐 Auth
-
-Signup → POST /auth/signup
-
-{ "email": "user@example.com", "password": "yourPassword" }
+📌 Saraha App
 
 
-Confirm Email → POST /auth/confirm-email
 
-{ "email": "user@example.com", "otp": "123456" }
+📖 Overview
 
-💌 Messages
+Saraha App is a simple web application inspired by the original Saraha platform.
+Users can register, login, send anonymous messages, and view messages received in their accounts.
 
-Send Message → POST /messages/send
-Get Inbox → GET /messages (JWT required)
-Delete Message → DELETE /messages/:id (JWT required)
+
+🗂 Table of Contents
+
+Features
+
+Tech Stack
+
+Requirements
+
+Environment Variables
+
+Installation & Run
+
+API Endpoints
+
+Project Structure
+
+Screenshots
+
+Future Improvements
+
+License
+
+
+🚀 Features
+
+✅ User Registration & Authentication (JWT).
+
+✅ Send anonymous messages.
+
+✅ View messages in your account.
+
+✅ Secure password hashing with bcryptjs.
+
+
+🛠 Tech Stack
+
+Backend: Node.js, Express.js
+
+Database: MongoDB
+
+Auth: JWT (JSON Web Token)
+
+
+
+---
+
+📋 Requirements
+
+Node.js (>= 18.x)
+
+MongoDB (Local or Atlas)
+
+
+🔑 Environment Variables
+
+Create a .env file in the root folder:
+
+PORT=3000
+MONGO_URI=your_mongo_uri
+JWT_SECRET=your_secret
+
+
+⚙️ Installation & Run
+
+# Clone repo
+git clone https://github.com/ammarcrespo335-png/SARAHAAPP.git
+
+# Go to project folder
+cd SARAHAAPP
+
+# Install dependencies
+npm install
+
+# Start server
+npm start
+
+
+📡 API Endpoints
+
+🔐 Authentication
+
+POST /auth/register   -> Register new user
+POST /auth/login      -> Login and get JWT token
+
+💬 Messages
+
+POST /messages/:userId  -> Send anonymous message to user
+GET /messages/my        -> Get my received messages
+
 
 📂 Project Structure
-saraha-app/
-├─ backend/
-│  ├─ src/
-│  │  ├─ config/
-│  │  ├─ controllers/
-│  │  ├─ middlewares/
-│  │  ├─ models/
-│  │  ├─ routes/
-│  │  ├─ services/
-│  │  ├─ utils/
-│  │  └─ app.js
-│  ├─ package.json
-│  └─ .env.example
-├─ frontend/
-│  └─ angular/ (Angular app)
-└─ README.md
+
+SARAHAAPP
+├── config/            # Database & server configs
+├── controllers/       # Route logic
+├── middlewares/       # Auth & error handling
+├── models/            # Mongoose schemas
+├── routes/            # API routes
+├── utils/             # Helper functions
+├── .env
+├── .gitignore
+├── package.json
+├── README.md
+└── server.js
+
 
 📸 Screenshots
 <img width="1919" height="967" alt="Screenshot 2025-10-03 165117" src="https://github.com/user-attachments/assets/77042f5c-7d36-4fbc-9b62-295cbbfa1571" />
